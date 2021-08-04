@@ -13,7 +13,7 @@ type busSubscriber interface {
 	unsubscribe(topic string, receiver BusNotifier) error
 }
 type BusNotifier interface {
-	BusNotification(data interface{})
+	BusNotification(topic string, data interface{})
 	BusType() string
 }
 type busPublisher interface {
@@ -146,7 +146,7 @@ func (bus *EventBus) publish(topic string, data interface{}) {
 				bus.removeHandler(topic, key)
 			}
 			if !value.async {
-				bus.doPublish(value, data)
+				bus.doPublish(topic,value, data)
 			} else {
 				bus.wg.Add(1)
 				if value.transactional {
@@ -154,20 +154,20 @@ func (bus *EventBus) publish(topic string, data interface{}) {
 					value.Lock()
 					bus.lock.Lock()
 				}
-				go bus.doPublishAsync(value, data)
+				go bus.doPublishAsync(topic,value, data)
 			}
 		}
 	}
 }
-func (bus *EventBus) doPublishAsync(handler *eventHandler, data interface{}) {
+func (bus *EventBus) doPublishAsync(topic string,handler *eventHandler, data interface{}) {
 	defer bus.wg.Done()
 	if handler.transactional {
 		defer handler.Unlock()
 	}
-	bus.doPublish(handler, data)
+	bus.doPublish(topic,handler, data)
 }
-func (bus *EventBus) doPublish(handler *eventHandler, data interface{}) {
-	handler.receiver.BusNotification(data)
+func (bus *EventBus) doPublish(topic string,handler *eventHandler, data interface{}) {
+	handler.receiver.BusNotification(topic,data)
 }
 func copy(source map[string]*eventHandler) map[string]*eventHandler {
 	copyMap := make(map[string]*eventHandler)
